@@ -17,6 +17,9 @@ instance/
 results.xlsx
 students.xlsx
 
+# Generated documentation
+Instructions.docx
+
 # IDE
 .vscode/
 .idea/

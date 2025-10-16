@@ -1,187 +1,147 @@
 # Student Writing Assignment System
 
-A simple, professional system for managing 2-session writing assignments using Microsoft Forms with student code-based access.
+A simple system for managing two-session writing assignments using Microsoft Forms with automatic student code-based access.
 
-## Overview
+## What It Does
 
-Students complete a ~250 word writing assignment across two class sessions. This system uses Microsoft Forms for data collection with Python scripts to enable continuity between sessions.
+Students complete a ~250 word writing assignment across two class sessions. The system:
+- Gives each student a personalized Microsoft Form
+- Remembers their work between sessions
+- Provides automatic word count feedback
+- Works on your local network (no cloud setup needed)
 
-**Key Features:**
-- Student code-based access (no login required)
-- Prefilled Microsoft Forms for seamless session continuity
-- Automatic word count feedback
-- Simple Flask redirect server for local network access
-- Works offline on local network
-- UTF-8 support for international names
+## Quick Start
+
+1. **For Non-Technical Users**: See [INSTRUCTIONS.md](INSTRUCTIONS.md)
+2. **For Detailed Setup**: See [docs/SETUP.md](docs/SETUP.md)
+
+## Features
+
+- **No Student Login** - Students just enter their code (e.g., STU001)
+- **Session Continuity** - Session 1 writing automatically carries over to Session 2
+- **Word Count Feedback** - Automatic guidance to add/reduce words or confirm good length
+- **UTF-8 Support** - Works with Vietnamese names and other special characters
+- **Local Network** - Runs on your computer, students access via local network
+- **Simple Interface** - Web-based entry, redirects to Microsoft Forms
+
+## How It Works
+
+### Session 1
+1. Students visit your server (e.g., `http://192.168.1.100:5001`)
+2. Enter their student code
+3. Redirected to their personalized Microsoft Form
+4. Write ~250 words
+5. Submit
+
+### Between Sessions
+1. Download responses from Microsoft Forms
+2. Run regeneration script
+3. Server automatically updates with new URLs
+
+### Session 2
+1. Students use same code
+2. See their Session 1 writing prefilled
+3. Get feedback: "Add 50 more words" or "Good length" etc.
+4. Continue writing and submit final version
+
+## Requirements
+
+- Python 3.8+ (tested with Python 3.13)
+- Microsoft Forms account
+- Local network for student access
+- Computer to run the server during class
 
 ## Project Structure
 
 ```
 newsletter-form/
-├── students.xlsx              # Student list (edit this file)
-├── results.xlsx               # Place Forms exports here
-├── INSTRUCTIONS.md            # Quick start guide for non-technical users
-├── README.md                  # This file (technical documentation)
-├── requirements.txt           # Python dependencies
-├── activate.sh                # Virtual environment activation helper
-│
-├── src/                       # Source code
-│   ├── app.py                # Flask redirect server
-│   ├── config.py             # Form configuration
-│   ├── generate_initial_links.py   # Creates Session 1 URLs
-│   ├── regenerate_links.py         # Creates Session 2 URLs
-│   └── utils/                # Utility scripts
-│       ├── extract_form_fields.py     # Extract field IDs from URL
-│       └── extract_excel_columns.py   # Extract column names from Excel
-│
-├── docs/                      # Documentation
-│   ├── SETUP.md              # Detailed setup instructions
-│   └── EXAMPLE_MESSAGES.md   # Example feedback messages
-│
-└── venv/                      # Python virtual environment (auto-created)
+├── students.xlsx          # Your student list (edit this)
+├── results.xlsx           # Place Forms exports here
+├── INSTRUCTIONS.md        # Quick start guide
+├── README.md              # This file
+├── src/                   # Source code (don't need to edit)
+└── docs/                  # Detailed documentation
+    └── SETUP.md          # Complete setup guide
 ```
 
-## System Requirements
+## Installation
 
-- Python 3.8+ (tested with Python 3.13)
-- Microsoft Forms account
-- Local network for student access
+```bash
+# Create virtual environment
+python3 -m venv venv
+source activate.sh
 
-## Quick Start
+# Install dependencies
+pip install -r requirements.txt
 
-For non-technical users, see **INSTRUCTIONS.md**.
+# Follow setup guide
+open docs/SETUP.md
+```
 
-For detailed setup, see **docs/SETUP.md**.
+## Basic Workflow
 
-### Installation
+**First Time Setup:**
+```bash
+# 1. Configure your Microsoft Form
+python src/utils/extract_form_fields.py
 
-1. **Create virtual environment:**
-   ```bash
-   python3 -m venv venv
-   source activate.sh  # or: source venv/bin/activate
-   ```
+# 2. Add students to students.xlsx
+# 3. Generate Session 1 URLs
+python src/generate_initial_links.py
 
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Basic Workflow
-
-**Session 1:**
-1. Edit `students.xlsx` with your student list
-2. Run `python src/generate_initial_links.py`
-3. Start server: `python src/app.py`
-4. Students visit http://YOUR_IP:5001 and enter their codes
+# 4. Start server
+python src/app.py
+```
 
 **After Session 1:**
-1. Download responses from Forms → save as `results.xlsx`
-2. Run `python src/regenerate_links.py results.xlsx`
-3. Restart server
+```bash
+# 1. Download results.xlsx from Microsoft Forms
+# 2. Generate Session 2 URLs
+python src/regenerate_links.py results.xlsx
 
-**Session 2:**
-- Students enter same codes
-- See their Session 1 writing and word count feedback
-- Continue or edit their work
+# 3. Restart server (or visit /reload)
+python src/app.py
+```
 
-## Configuration
+## Documentation
 
-### Initial Setup
-
-1. **Create Microsoft Form** with 4 fields:
-   - Student Name (short text)
-   - Student Code (short text)
-   - Newsletter Content (long text)
-   - Info (short text) - dual purpose field
-
-2. **Extract Field IDs:**
-   ```bash
-   python src/utils/extract_form_fields.py
-   ```
-   Follow prompts to paste your prefilled URL
-
-3. **Extract Excel Columns** (after first submission):
-   ```bash
-   python src/utils/extract_excel_columns.py results.xlsx
-   ```
-
-Both utilities automatically update `src/config.py`.
-
-## Server Endpoints
-
-- `/` - Student entry page
-- `/admin` - View registered students
-- `/reload` - Reload student mappings from Excel
-
-## Technical Details
-
-### Word Count Feedback
-
-The system provides gentle, constructive feedback:
-- **< 240 words**: "Add about X more words to reach 250"
-- **240-260 words**: "Good length - you can edit or submit"
-- **> 260 words**: "Consider making it shorter by about X words"
-
-### URL Encoding
-
-- Uses `quote_via=quote` for proper `%20` space encoding (Microsoft Forms requirement)
-- Base URL format: `https://forms.office.com/...?id=...` + `&field=value&...`
-
-### Code Matching
-
-- Student codes are case-insensitive
-- Matching is code-based (not name-based) for reliability
-- Handles UTF-8 characters in names
-
-### Session Management
-
-- Session 1: Instructions prefilled in "Info" field
-- Session 2: Progress message prefilled showing word count and feedback
-
-## Security Notes
-
-- Designed for **local network use only**
-- No authentication beyond student codes
-- Ensure firewall allows connections on port 5001
-- Student data stored in Microsoft Forms (follows your organization's policies)
-- No sensitive data in this repository
+- **Instructions.docx** - User-friendly Word document (generate with `python src/utils/md_to_docx.py INSTRUCTIONS.md`)
+- **[INSTRUCTIONS.md](INSTRUCTIONS.md)** - Simple quick start for teachers
+- **[docs/SETUP.md](docs/SETUP.md)** - Complete technical setup guide
 
 ## Troubleshooting
 
-### Port 5000 Conflict
-Port 5000 conflicts with macOS AirPlay. System uses port 5001 by default.
+### Common Issues
 
-### Form Doesn't Load
-Verify URL format in `config.py`:
-- Base URL must end with `?id=...`
-- Additional parameters use `&` not `?`
+**Port 5000 in use**: System uses port 5001 (macOS AirPlay uses 5000)
 
-### Column Name Mismatch
-Forms may append numbers to duplicate field names (e.g., "Name1").
-Run `extract_excel_columns.py` to auto-detect correct names.
+**Form doesn't load**: Check that generated URLs use `&` not `?` for parameters
 
-### URL Too Long
-Microsoft Forms supports URLs up to ~2000 characters. With 250 words, this should not be an issue.
+**Students can't connect**: Verify firewall allows port 5001
 
-## Development
+**Vietnamese names broken**: Ensure students.xlsx saved with UTF-8 encoding
 
-### Running Tests
-```bash
-source activate.sh
-python src/generate_initial_links.py  # Test URL generation
-python src/app.py  # Test server
-```
+See [docs/SETUP.md](docs/SETUP.md) for detailed troubleshooting.
 
-### Making Changes
-1. Edit code in `src/` directory
-2. Test locally
-3. Update documentation if needed
-4. Commit changes
+## Technical Details
+
+- **Backend**: Flask (Python web framework)
+- **Data**: Excel files (.xlsx) via pandas
+- **Forms**: Microsoft Forms native prefill feature
+- **Encoding**: UTF-8 with proper URL encoding (%20 for spaces)
+
+## Security
+
+Designed for local network use only:
+- Student codes provide basic access control
+- No authentication system
+- Student data stored in Microsoft Forms
+- Suitable for classroom environments
 
 ## License
 
-MIT License - Feel free to modify for your needs.
+MIT License - feel free to modify for your needs.
 
 ## Credits
 
-Built for educational purposes. Uses Microsoft Forms, Flask, and pandas.
+Built for educational purposes using Microsoft Forms, Flask, and pandas.
