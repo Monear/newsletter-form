@@ -140,6 +140,8 @@ def main():
 
     # Add URLs to dataframe and save
     df['url'] = urls
+
+    # Preserve the # column if it exists (row numbers for user reference)
     df.to_excel(students_file, index=False)
 
     print(f"✓ Successfully generated {len(df)} prefilled URLs")

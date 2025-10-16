@@ -187,17 +187,17 @@ def regenerate_links(excel_file):
 
     students_file = Path(__file__).parent.parent / 'students.xlsx'
 
-    # Convert students dict back to DataFrame
-    students_data = []
-    for code, student in students.items():
-        students_data.append({
-            'code': code,
-            'name': student['name'],
-            'url': student.get('url', '')
-        })
+    # Read original file to preserve column order and # column
+    df_original = pd.read_excel(students_file)
 
-    df_students = pd.DataFrame(students_data)
-    df_students.to_excel(students_file, index=False)
+    # Update URLs in the original dataframe
+    for idx, row in df_original.iterrows():
+        code = str(row['code']).strip().upper()
+        if code in students and 'url' in students[code]:
+            df_original.at[idx, 'url'] = students[code]['url']
+
+    # Save with all original columns preserved
+    df_original.to_excel(students_file, index=False)
 
     print()
     print("="*60)
