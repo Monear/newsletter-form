@@ -2,16 +2,20 @@
 """
 Generate initial prefilled Microsoft Forms URLs for students.
 
-This script reads student information from students.csv and generates
+This script reads student information from students.xlsx and generates
 prefilled Form URLs for Session 1 (with name and prompt only).
 
 Usage:
     python generate_initial_links.py
 """
 
-import csv
+import pandas as pd
 from urllib.parse import urlencode, quote
 import sys
+from pathlib import Path
+
+# Add current directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 import config
 
 def generate_prefilled_url(student_code, student_name, include_writing=False, writing_text="", writing_info=""):
@@ -86,39 +90,40 @@ def main():
     if not validate_config():
         sys.exit(1)
 
-    # Check if students.csv exists
+    # Path to students.xlsx in parent directory
+    students_file = Path(__file__).parent.parent / 'students.xlsx'
+
+    # Check if students.xlsx exists
     try:
-        with open('students.csv', 'r') as f:
-            reader = csv.DictReader(f)
-            students = list(reader)
+        df = pd.read_excel(students_file)
     except FileNotFoundError:
-        print("ERROR: students.csv not found!")
-        print("\nPlease create students.csv with columns: code,name")
+        print("ERROR: students.xlsx not found!")
+        print("\nPlease create students.xlsx in the project root with columns: code, name")
         print("Example:")
-        print("  code,name")
-        print("  STU001,John Doe")
-        print("  STU002,Jane Smith")
+        print("  code | name")
+        print("  STU001 | John Doe")
+        print("  STU002 | Jane Smith")
         sys.exit(1)
 
-    # Validate CSV structure
-    if not students:
-        print("ERROR: students.csv is empty!")
+    # Validate structure
+    if df.empty:
+        print("ERROR: students.xlsx is empty!")
         sys.exit(1)
 
     required_columns = ['code', 'name']
-    if not all(col in students[0] for col in required_columns):
-        print(f"ERROR: students.csv must have columns: {', '.join(required_columns)}")
-        print(f"Found columns: {', '.join(students[0].keys())}")
+    if not all(col in df.columns for col in required_columns):
+        print(f"ERROR: students.xlsx must have columns: {', '.join(required_columns)}")
+        print(f"Found columns: {', '.join(df.columns)}")
         sys.exit(1)
 
     # Generate URLs for each student
-    print(f"Generating prefilled URLs for {len(students)} students...")
+    print(f"Generating prefilled URLs for {len(df)} students...")
     print()
 
-    updated_students = []
-    for student in students:
-        code = student['code'].strip()
-        name = student['name'].strip()
+    urls = []
+    for _, row in df.iterrows():
+        code = str(row['code']).strip()
+        name = str(row['name']).strip()
 
         # Generate initial URL (Session 1)
         url = generate_prefilled_url(
@@ -127,28 +132,23 @@ def main():
             writing_info=config.WRITING_INFO_SESSION_1
         )
 
-        # Add URL to student record
-        student['url'] = url
-        updated_students.append(student)
+        urls.append(url)
 
         print(f"  {code}: {name}")
         print(f"    → {url[:80]}..." if len(url) > 80 else f"    → {url}")
         print()
 
-    # Write updated CSV with URLs
-    fieldnames = ['code', 'name', 'url']
-    with open('students.csv', 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(updated_students)
+    # Add URLs to dataframe and save
+    df['url'] = urls
+    df.to_excel(students_file, index=False)
 
-    print(f"✓ Successfully generated {len(updated_students)} prefilled URLs")
-    print(f"✓ Updated students.csv with URLs")
+    print(f"✓ Successfully generated {len(df)} prefilled URLs")
+    print(f"✓ Updated students.xlsx with URLs")
     print()
     print("Next steps:")
-    print("  1. Start the Flask server: python app.py")
-    print("  2. Students can access via: http://YOUR_IP:5000")
-    print("  3. After Session 1, download responses and run: python regenerate_links.py responses.xlsx")
+    print("  1. Start the Flask server: python src/app.py")
+    print("  2. Students can access via: http://YOUR_IP:5001")
+    print("  3. After Session 1, download responses and run: python src/regenerate_links.py results.xlsx")
 
 
 if __name__ == "__main__":

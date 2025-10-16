@@ -10,8 +10,13 @@ Usage:
 """
 
 from flask import Flask, render_template_string, request, redirect
-import csv
+import pandas as pd
 import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+import sys
+sys.path.insert(0, str(Path(__file__).parent))
 import config
 
 app = Flask(__name__)
@@ -21,32 +26,35 @@ STUDENT_MAPPINGS = {}
 
 
 def load_student_mappings():
-    """Load student code → URL mappings from students.csv."""
+    """Load student code → URL mappings from students.xlsx."""
     global STUDENT_MAPPINGS
     STUDENT_MAPPINGS = {}
 
-    try:
-        with open('students.csv', 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                code = row['code'].strip().upper()
-                url = row.get('url', '').strip()
+    # Path to students.xlsx in parent directory
+    students_file = Path(__file__).parent.parent / 'students.xlsx'
 
-                if url:
-                    STUDENT_MAPPINGS[code] = {
-                        'name': row['name'].strip(),
-                        'url': url
-                    }
+    try:
+        df = pd.read_excel(students_file)
+
+        for _, row in df.iterrows():
+            code = str(row['code']).strip().upper()
+            url = str(row.get('url', '')).strip()
+
+            if url and url != 'nan':
+                STUDENT_MAPPINGS[code] = {
+                    'name': str(row['name']).strip(),
+                    'url': url
+                }
 
         print(f"Loaded {len(STUDENT_MAPPINGS)} student mappings")
         return True
 
     except FileNotFoundError:
-        print("ERROR: students.csv not found!")
-        print("Run: python generate_initial_links.py")
+        print("ERROR: students.xlsx not found!")
+        print("Run: python src/generate_initial_links.py")
         return False
     except Exception as e:
-        print(f"ERROR loading students.csv: {e}")
+        print(f"ERROR loading students.xlsx: {e}")
         return False
 
 

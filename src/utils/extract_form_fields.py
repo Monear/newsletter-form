@@ -6,7 +6,7 @@ This utility helps you configure the system by automatically extracting
 field parameter names from a prefilled Forms URL.
 
 Usage:
-    python extract_form_fields.py
+    python src/utils/extract_form_fields.py
 
 The script will:
 1. Prompt you to paste your prefilled Forms URL
@@ -17,6 +17,7 @@ The script will:
 
 import sys
 from urllib.parse import urlparse, parse_qs
+from pathlib import Path
 
 
 def extract_fields_from_url(url):
@@ -96,7 +97,10 @@ def update_config(base_url, field_mapping):
         base_url: The base Forms URL
         field_mapping: Dict of config names to field IDs
     """
-    with open('config.py', 'r') as f:
+    # Path to config.py in src directory
+    config_file = Path(__file__).parent.parent / 'config.py'
+
+    with open(config_file, 'r') as f:
         lines = f.readlines()
 
     updated_lines = []
@@ -116,7 +120,7 @@ def update_config(base_url, field_mapping):
         else:
             updated_lines.append(line)
 
-    with open('config.py', 'w') as f:
+    with open(config_file, 'w') as f:
         f.writelines(updated_lines)
 
 
@@ -242,10 +246,10 @@ def main():
         print()
 
     print("Next steps:")
-    print("  1. Review config.py to ensure all fields are correct")
-    print("  2. Update EXCEL_COL_NAME in config.py (check your Excel export)")
-    print("  3. Run: python generate_initial_links.py")
-    print("  4. Start the server: python app.py")
+    print("  1. Review src/config.py to ensure all fields are correct")
+    print("  2. Update EXCEL_COL_* in config.py (use extract_excel_columns.py)")
+    print("  3. Run: python src/generate_initial_links.py")
+    print("  4. Start the server: python src/app.py")
     print()
 
 

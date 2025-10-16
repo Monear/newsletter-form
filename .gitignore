@@ -13,9 +13,9 @@ ENV/
 instance/
 .webassets-cache
 
-# Data files
-responses.xlsx
-data/
+# Data files (user data - don't commit)
+results.xlsx
+students.xlsx
 
 # IDE
 .vscode/

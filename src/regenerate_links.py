@@ -4,35 +4,39 @@ Regenerate prefilled Microsoft Forms URLs with student responses from Session 1.
 
 This script reads the Excel export from Microsoft Forms after Session 1,
 extracts student responses, and generates new prefilled URLs for Session 2
-that include their previous writing and picture upload status.
+that include their previous writing and word count feedback.
 
 Usage:
-    python regenerate_links.py responses.xlsx
+    python regenerate_links.py results.xlsx
 """
 
-import csv
 import sys
 import pandas as pd
-from urllib.parse import urlencode
+from pathlib import Path
+
+# Add current directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 import config
 from generate_initial_links import generate_prefilled_url
 
 
 def load_current_students():
-    """Load current student mappings from students.csv."""
+    """Load current student mappings from students.xlsx."""
     students = {}
 
+    # Path to students.xlsx in parent directory
+    students_file = Path(__file__).parent.parent / 'students.xlsx'
+
     try:
-        with open('students.csv', 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                code = row['code'].strip().upper()
-                students[code] = {
-                    'name': row['name'].strip(),
-                    'code': code
-                }
+        df = pd.read_excel(students_file)
+        for _, row in df.iterrows():
+            code = str(row['code']).strip().upper()
+            students[code] = {
+                'name': str(row['name']).strip(),
+                'code': code
+            }
     except FileNotFoundError:
-        print("ERROR: students.csv not found!")
+        print("ERROR: students.xlsx not found!")
         print("This file should exist from initial setup.")
         sys.exit(1)
 
@@ -75,17 +79,22 @@ def regenerate_links(excel_file):
     """
 
     # Load current student mappings
-    print("Loading student data from students.csv...")
+    print("Loading student data from students.xlsx...")
     students = load_current_students()
     print(f"  Found {len(students)} students")
     print()
 
+    # Convert excel_file to absolute path if needed
+    excel_path = Path(excel_file)
+    if not excel_path.is_absolute():
+        excel_path = Path(__file__).parent.parent / excel_file
+
     # Read Excel file
-    print(f"Reading responses from {excel_file}...")
+    print(f"Reading responses from {excel_path.name}...")
     try:
-        df = pd.read_excel(excel_file)
+        df = pd.read_excel(excel_path)
     except FileNotFoundError:
-        print(f"ERROR: File not found: {excel_file}")
+        print(f"ERROR: File not found: {excel_path}")
         sys.exit(1)
     except Exception as e:
         print(f"ERROR reading Excel file: {e}")
@@ -125,7 +134,7 @@ def regenerate_links(excel_file):
         # Match by student code (much more reliable than name matching)
         if response_code not in students:
             unmatched_responses.append(f"{response_code} ({response_name})")
-            print(f"  ⚠ WARNING: Code '{response_code}' not found in students.csv")
+            print(f"  ⚠ WARNING: Code '{response_code}' not found in students.xlsx")
             continue
 
         student_code = response_code
@@ -173,20 +182,22 @@ def regenerate_links(excel_file):
         if not student.get('has_response', False):
             students_without_response.append(f"{code} ({student['name']})")
 
-    # Write updated students.csv
-    print(f"Writing updated URLs to students.csv...")
-    fieldnames = ['code', 'name', 'url']
+    # Write updated students.xlsx
+    print(f"Writing updated URLs to students.xlsx...")
 
-    with open('students.csv', 'w', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
+    students_file = Path(__file__).parent.parent / 'students.xlsx'
 
-        for code, student in students.items():
-            writer.writerow({
-                'code': code,
-                'name': student['name'],
-                'url': student.get('url', '')
-            })
+    # Convert students dict back to DataFrame
+    students_data = []
+    for code, student in students.items():
+        students_data.append({
+            'code': code,
+            'name': student['name'],
+            'url': student.get('url', '')
+        })
+
+    df_students = pd.DataFrame(students_data)
+    df_students.to_excel(students_file, index=False)
 
     print()
     print("="*60)
@@ -206,8 +217,8 @@ def regenerate_links(excel_file):
 
     print()
     print("Next steps:")
-    print("  1. Restart Flask server (Ctrl+C then: python app.py)")
-    print("     OR visit: http://YOUR_IP:5000/reload")
+    print("  1. Restart Flask server (Ctrl+C then: python src/app.py)")
+    print("     OR visit: http://YOUR_IP:5001/reload")
     print("  2. Students enter their codes for Session 2")
     print("  3. They will see:")
     print("     - Their writing from Session 1")
@@ -219,14 +230,14 @@ def main():
     """Main entry point."""
 
     if len(sys.argv) < 2:
-        print("Usage: python regenerate_links.py <responses.xlsx>")
+        print("Usage: python regenerate_links.py <results.xlsx>")
         print("\nExample:")
-        print("  python regenerate_links.py responses.xlsx")
-        print("\nDownload responses.xlsx from Microsoft Forms:")
+        print("  python src/regenerate_links.py results.xlsx")
+        print("\nDownload results.xlsx from Microsoft Forms:")
         print("  1. Open your Form")
         print("  2. Go to 'Responses' tab")
         print("  3. Click 'Open in Excel' or export to Excel")
-        print("  4. Save as responses.xlsx")
+        print("  4. Save as results.xlsx in the project root")
         sys.exit(1)
 
     excel_file = sys.argv[1]

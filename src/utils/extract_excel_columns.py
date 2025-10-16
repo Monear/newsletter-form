@@ -6,7 +6,7 @@ This utility helps you configure the Excel column mappings by automatically
 extracting column names from an exported Forms response file.
 
 Usage:
-    python extract_excel_columns.py responses.xlsx
+    python src/utils/extract_excel_columns.py results.xlsx
 
 The script will:
 1. Read the Excel file from Microsoft Forms
@@ -91,7 +91,10 @@ def update_config(column_mapping):
     Args:
         column_mapping: Dict of config variable names to column names
     """
-    with open('config.py', 'r') as f:
+    # Path to config.py in src directory
+    config_file = Path(__file__).parent.parent / 'config.py'
+
+    with open(config_file, 'r') as f:
         lines = f.readlines()
 
     updated_lines = []
@@ -111,7 +114,7 @@ def update_config(column_mapping):
         if not updated:
             updated_lines.append(line)
 
-    with open('config.py', 'w') as f:
+    with open(config_file, 'w') as f:
         f.writelines(updated_lines)
 
 
@@ -130,18 +133,26 @@ def main():
 
     # Check if Excel file path provided
     if len(sys.argv) < 2:
-        print("Usage: python extract_excel_columns.py <excel_file.xlsx>")
+        print("Usage: python src/utils/extract_excel_columns.py <excel_file.xlsx>")
         print()
         print("Example:")
-        print("  python extract_excel_columns.py responses.xlsx")
+        print("  python src/utils/extract_excel_columns.py results.xlsx")
         sys.exit(1)
 
     excel_path = sys.argv[1]
 
+    # Convert to absolute path if needed
+    excel_file = Path(excel_path)
+    if not excel_file.is_absolute():
+        # Assume file is in project root
+        excel_file = Path(__file__).parent.parent.parent / excel_path
+
     # Verify file exists
-    if not Path(excel_path).exists():
-        print(f"Error: File not found: {excel_path}")
+    if not excel_file.exists():
+        print(f"Error: File not found: {excel_file}")
         sys.exit(1)
+
+    excel_path = str(excel_file)
 
     print(f"Reading Excel file: {excel_path}")
     print()
@@ -228,8 +239,8 @@ def main():
         print()
 
     print("Next steps:")
-    print("  1. Review config.py to ensure all column names are correct")
-    print("  2. Run: python regenerate_links.py " + excel_path)
+    print("  1. Review src/config.py to ensure all column names are correct")
+    print("  2. Run: python src/regenerate_links.py " + Path(excel_path).name)
     print()
 
 
